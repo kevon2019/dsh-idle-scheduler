@@ -15,7 +15,8 @@ deepseek-harness (dsh) 面板的**闲时任务调度**插件：把任务排队�
 dsh plugin --profile web add github:kevon2019/dsh-idle-scheduler
 ```
 
-> 如需锁定版本：`dsh plugin --profile web add github:kevon2019/dsh-idle-scheduler@1.0.0`
+> 如需锁定版本：`dsh plugin --profile web add github:kevon2019/dsh-idle-scheduler#v1.0.2`
+> （GitHub 依赖用 `#` 指定 tag/分支，**不是** npm 的 `@版本`）
 > 安装后重启面板服务即可生效：`systemctl restart deepseek-harness.service`
 
 ## 配置
@@ -31,5 +32,5 @@ dsh plugin --profile web add github:kevon2019/dsh-idle-scheduler
 ## 开发与源码
 
 - 结构：`lib/index.js`（host 半）+ `lib/client.js`（client 半）+ `cordis.patch.yml`（bundle 挂载）
-- 版本：`1.0.0`
+- 版本：`1.0.2`
 - 许可：MIT
