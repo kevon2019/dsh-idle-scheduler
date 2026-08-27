@@ -1,0 +1,5 @@
+# dsh-idle-scheduler bundle patch: mount the host plugin under its package name
+# (resolved through the profile's node_modules, file: linked).
+- insert:
+    - id: idle-scheduler
+      name: dsh-idle-scheduler
