@@ -1,6 +1,6 @@
 {
   "name": "dsh-idle-scheduler",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Idle-time task queue & batching: queue tasks, run at off-peak windows (2026 节假日/工作日), per-task model selection.",
   "type": "module",
   "main": "lib/index.js",
