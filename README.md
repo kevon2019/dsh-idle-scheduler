@@ -15,7 +15,7 @@ deepseek-harness (dsh) 面板的**闲时任务调度**插件：把任务排队�
 dsh plugin --profile web add github:kevon2019/dsh-idle-scheduler
 ```
 
-> 如需锁定版本：`dsh plugin --profile web add github:kevon2019/dsh-idle-scheduler#v1.0.3`
+> 如需锁定版本：`dsh plugin --profile web add github:kevon2019/dsh-idle-scheduler#v1.0.4`
 > （GitHub 依赖用 `#` 指定 tag/分支，**不是** npm 的 `@版本`）
 > 安装后重启面板服务即可生效：`systemctl restart deepseek-harness.service`
 
@@ -56,7 +56,7 @@ crontab -l
 
 ## 避坑 / 故障排查
 
-- **锁版本**：安装用 `#v1.0.3`（GitHub 依赖用 `#` 指定 tag，不是 npm 的 `@版本`）。
+- **锁版本**：安装用 `#v1.0.4`（GitHub 依赖用 `#` 指定 tag，不是 npm 的 `@版本`）。
 - **装后重启**：`systemctl restart deepseek-harness.service`。
 - **别在 profile 里手动 `pnpm add/up`**：可能破坏 `node_modules/@changfenhuang/dsh-genui` 软链（dsh 面板把它软链到 `@omdsh-dev/dsh-genui`），导致面板 UI 起不来；装/改插件一律走 `dsh plugin`。若动过 pnpm，请检查该软链是否仍存在。
 - **PROFILE 层补丁**：插件对面板的 cordis 补丁写在 PROFILE 的 `cordis.patch.yml`，勿改 node_modules 里的（重启会被还原）。
@@ -66,5 +66,5 @@ crontab -l
 ## 开发与源码
 
 - 结构：`lib/index.js`（host 半）+ `lib/client.js`（client 半）+ `cordis.patch.yml`（bundle 挂载）
-- 版本：`1.0.3`
+- 版本：`1.0.4`
 - 许可：MIT
