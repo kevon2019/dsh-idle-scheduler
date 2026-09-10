@@ -15,7 +15,7 @@ deepseek-harness (dsh) 面板的**闲时任务调度**插件：把任务排队�
 dsh plugin --profile web add github:kevon2019/dsh-idle-scheduler
 ```
 
-> 如需锁定版本：`dsh plugin --profile web add github:kevon2019/dsh-idle-scheduler#v1.1.1`
+> 如需锁定版本：`dsh plugin --profile web add github:kevon2019/dsh-idle-scheduler#v1.1.2`
 > （GitHub 依赖用 `#` 指定 tag/分支，**不是** npm 的 `@版本`）
 > 安装后重启面板服务即可生效：`systemctl restart deepseek-harness.service`
 
@@ -56,15 +56,19 @@ crontab -l
 
 ## 避坑 / 故障排查
 
-- **锁版本**：安装用 `#v1.1.1`（GitHub 依赖用 `#` 指定 tag，不是 npm 的 `@版本`）。
+- **锁版本**：安装用 `#v1.1.2`（GitHub 依赖用 `#` 指定 tag，不是 npm 的 `@版本`）。
 - **装后重启**：`systemctl restart deepseek-harness.service`。
 - **别在 profile 里手动 `pnpm add/up`**：可能破坏 `node_modules/@changfenhuang/dsh-genui` 软链（dsh 面板把它软链到 `@omdsh-dev/dsh-genui`），导致面板 UI 起不来；装/改插件一律走 `dsh plugin`。若动过 pnpm，请检查该软链是否仍存在。
 - **PROFILE 层补丁**：插件对面板的 cordis 补丁写在 PROFILE 的 `cordis.patch.yml`，勿改 node_modules 里的（重启会被还原）。
 - **调度生效确认**：设置后，队列任务应在设定的闲时窗口内开始执行；若一直不跑，先检查「启用调度」开关与窗口时间（含节假日/工作日配置）是否正确。
+- **接口报错先看「自诊断」**（v1.1.2 ≥ 1.1.2）：设置页顶部会给出接口状态、可能原因与修复方向 ——
+  403 且文案含 `loopback-only` = 反向代理没把 Host 改写成 `127.0.0.1:3080`（加 `proxy_set_header Host 127.0.0.1:3080;` 后 reload nginx）；
+  401/403 = 面板 nginx 的 `auth_request` 未豁免该路径；404 = 插件未加载（重启面板）；5xx/超时 = 面板服务异常或正在重启。
+  页面底部有「重试」与「复制诊断信息」，排查或提 issue 时直接贴。
 - **私密信息**：token/密钥只填在面板设置里，勿写进源码或命令。
 
 ## 开发与源码
 
 - 结构：`lib/index.js`（host 半）+ `lib/client.js`（client 半）+ `cordis.patch.yml`（bundle 挂载）
-- 版本：`1.1.1`
+- 版本：`1.1.2`
 - 许可：MIT
