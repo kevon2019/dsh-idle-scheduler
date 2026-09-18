@@ -89,5 +89,47 @@ if (T) {
   check('时/分候选表齐全（24 / 60）', T.HOURS.length === 24 && T.MINUTES.length === 60 && T.HOURS[23] === '23' && T.MINUTES[59] === '59');
 }
 
+/* ---------- v1.3.0：队列状态/归档/删除纯函数 ---------- */
+const QH = mod.apply.__queue;
+check('导出队列纯函数 __queue', QH && typeof QH.summarize === 'function' && typeof QH.filterTasks === 'function');
+if (QH) {
+  const T = (id, status, extra) => Object.assign({ id, status, prompt: 'p' + id, mode: 'idle' }, extra || {});
+  const list = [
+    T('a', 'queued'), T('b', 'running'), T('c', 'done', { createdAt: '2026-09-18T01:00:00Z', finishedAt: '2026-09-18T01:00:45Z' }),
+    T('d', 'failed', { error: 'boom' }), T('e', 'done', { archived: true }), T('f', 'failed', { archived: true }),
+  ];
+  const s = QH.summarize(list);
+  check('summarize 统计齐备（active/archived 分离）',
+    s.total === 6 && s.queued === 1 && s.running === 1 && s.done === 1 && s.failed === 1 && s.archived === 2 && s.active === 4, JSON.stringify(s));
+  check('filterTasks: 默认/all 只给未归档', QH.filterTasks(list, 'all').length === 4 && QH.filterTasks(list).length === 4);
+  check('filterTasks: 按状态筛选', QH.filterTasks(list, 'done').length === 1 && QH.filterTasks(list, 'failed').length === 1 && QH.filterTasks(list, 'queued').length === 1);
+  check('filterTasks: archived 视图只给归档项', QH.filterTasks(list, 'archived').map((t) => t.id).join(',') === 'e,f');
+  check('filterTasks: 空/异常输入不崩', QH.filterTasks(null, 'all').length === 0 && QH.filterTasks([undefined], 'done').length === 0);
+
+  check('durationText: 秒/分/小时与缺值',
+    QH.durationText({ createdAt: '2026-09-18T01:00:00Z', finishedAt: '2026-09-18T01:00:45Z' }) === '45 秒'
+    && QH.durationText({ createdAt: '2026-09-18T01:00:00Z', finishedAt: '2026-09-18T01:05:30Z' }) === '5 分 30 秒'
+    && QH.durationText({ createdAt: '2026-09-18T01:00:00Z', finishedAt: '2026-09-18T02:05:00Z' }) === '1 小时 5 分'
+    && QH.durationText({ createdAt: '2026-09-18T01:00:00Z' }) === ''
+    && QH.durationText(null) === '');
+
+  const running = T('r', 'running'), queued = T('q', 'queued'), done = T('d', 'done'), failed = T('f', 'failed'), arch = T('x', 'done', { archived: true });
+  check('执行中的任务：不可归档/删除/取消',
+    QH.canArchive(running) === false && QH.canDelete(running) === false && QH.canCancel(running) === false, 'running');
+  check('已完成/失败：可归档、可删除、可重试',
+    QH.canArchive(done) && QH.canDelete(done) && QH.canRetry(done) && QH.canArchive(failed) && QH.canRetry(failed), 'done/failed');
+  check('待执行：可取消、可归档、可删除、不可重试',
+    QH.canCancel(queued) && QH.canArchive(queued) && QH.canDelete(queued) && QH.canRetry(queued) === false, 'queued');
+  check('已归档项：可取消归档、不可重复归档、不可取消执行',
+    QH.canUnarchive(arch) && QH.canArchive(arch) === false && QH.canCancel(arch) === false, 'archived');
+
+  check('STATUS_META 五种状态都有 label/color/hint',
+    ['queued', 'running', 'done', 'failed', 'canceled'].every((k) => QH.STATUS_META[k] && QH.STATUS_META[k].label && QH.STATUS_META[k].color && QH.STATUS_META[k].hint)
+    && QH.statusMeta('done').label === '已完成' && QH.statusMeta('weird').label === 'weird');
+  check('clip 截断加省略号且折叠空白', QH.clip('a  b\n\nc', 20) === 'a b c' && QH.clip('0123456789', 5).length === 5 && QH.clip('0123456789', 5).endsWith('…'));
+  check('taskTimeText 优先定时时间、其次完成时间', QH.taskTimeText({ mode: 'scheduled', runAt: '2026-09-18T06:30:00.000Z', finishedAt: '2026-09-18T08:00:00Z' }) === '2026-09-18 06:30'
+    && QH.taskTimeText({ mode: 'idle', createdAt: '2026-09-18T06:30:00Z', finishedAt: '2026-09-18T07:00:00Z' }) === '2026-09-18 07:00');
+}
+
 console.log(failed === 0 ? '\n✓ ALL PASS' : `\n✗ ${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);

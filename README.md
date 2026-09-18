@@ -15,7 +15,7 @@ deepseek-harness (dsh) 面板的**闲时任务调度**插件：把任务排队�
 dsh plugin --profile web add github:kevon2019/dsh-idle-scheduler
 ```
 
-> 如需锁定版本：`dsh plugin --profile web add github:kevon2019/dsh-idle-scheduler#v1.2.0`
+> 如需锁定版本：`dsh plugin --profile web add github:kevon2019/dsh-idle-scheduler#v1.3.0`
 > （GitHub 依赖用 `#` 指定 tag/分支，**不是** npm 的 `@版本`）
 > 安装后重启面板服务即可生效：`systemctl restart deepseek-harness.service`
 
@@ -54,6 +54,41 @@ crontab -l
 - 执行器用 `dsh --profile <PROFILE> <prompt>` 跑免交互 agent（默认 headless profile，环境变量
   DSH/DSH_HOME 与 kejilion.env 注入）。请确保对应 profile 已配置好模型与 API Key。
 
+## 队列与执行状态（设置页「闲时/定时任务」）
+
+设置页的第二张卡片就是队列面板，用来**看状态 + 管记录**：
+
+| 元素 | 作用 |
+|---|---|
+| 计数筛选 | `全部 / 待执行 / 执行中 / 已完成 / 失败 / 已归档`，点一下只看这一类，计数实时来自服务端 |
+| 状态徽标 | 待执行（等闲时窗口/到点）、执行中、已完成、失败、已归档 |
+| 每条任务 | 模式（闲时 / 定时 + 到点时间）、模型、**耗时**；成功结果与失败错误可「展开详情」查看 |
+| `归档` / `取消归档` | 归档 = 移出列表但保留记录（在「已归档」筛选里能看到并恢复）；不会删除任何数据 |
+| `删除` | 永久删除该条记录，**需要点两次**（第一次变「确认删除？」） |
+| `重试` | 把已完成/失败的任务复制成一条新的待执行任务（原记录保留） |
+| `取消` | 把待执行任务移出队列 |
+| 批量 | `归档全部已结束`、`清空已归档`、`刷新` |
+
+> **执行中的任务不可归档 / 删除 / 取消**：前端不显示这些按钮，服务端也会拒绝（HTTP 409 并返回原因），
+> 避免误删正在运行的任务。要动它，等这一轮跑完即可。
+
+### 队列 API（面板与脚本都可用）
+
+```bash
+# 读队列：附带 stats（total/active/queued/running/done/failed/archived）与每条 archived/durationMs
+curl -s -H "Cookie: <面板 cookie>" http://127.0.0.1:3080/api/idle-scheduler/tasks
+
+# 归档 / 取消归档 / 重试 / 取消（单条）
+curl -s -X POST -H 'content-type: application/json' -d '{"action":"archive","id":"<taskId>"}' \
+     http://127.0.0.1:3080/api/idle-scheduler/tasks
+# 批量：归档全部已结束 / 清空已归档
+curl -s -X POST -H 'content-type: application/json' -d '{"action":"archive-done"}'   http://127.0.0.1:3080/api/idle-scheduler/tasks
+curl -s -X POST -H 'content-type: application/json' -d '{"action":"clear-archived"}' http://127.0.0.1:3080/api/idle-scheduler/tasks
+
+# 永久删除（DELETE）
+curl -s -X DELETE -H 'content-type: application/json' -d '{"id":"<taskId>"}' http://127.0.0.1:3080/api/idle-scheduler/tasks
+```
+
 ## 兼容性
 
 | dsh 核心 | 状态 |
@@ -79,7 +114,7 @@ crontab -l
 
 ## 避坑 / 故障排查
 
-- **锁版本**：安装用 `#v1.2.0`（GitHub 依赖用 `#` 指定 tag，不是 npm 的 `@版本`）。
+- **锁版本**：安装用 `#v1.3.0`（GitHub 依赖用 `#` 指定 tag，不是 npm 的 `@版本`）。
 - **装后重启**：`systemctl restart deepseek-harness.service`。
 - **别在 profile 里手动 `pnpm add/up`**：可能破坏 `node_modules/@changfenhuang/dsh-genui` 软链（dsh 面板把它软链到 `@omdsh-dev/dsh-genui`），导致面板 UI 起不来；装/改插件一律走 `dsh plugin`。若动过 pnpm，请检查该软链是否仍存在。
 - **PROFILE 层补丁**：插件对面板的 cordis 补丁写在 PROFILE 的 `cordis.patch.yml`，勿改 node_modules 里的（重启会被还原）。
@@ -93,5 +128,5 @@ crontab -l
 ## 开发与源码
 
 - 结构：`lib/index.js`（host 半）+ `lib/client.js`（client 半）+ `cordis.patch.yml`（bundle 挂载）
-- 版本：`1.2.0`
+- 版本：`1.3.0`
 - 许可：MIT
