@@ -15,7 +15,7 @@ deepseek-harness (dsh) 面板的**闲时任务调度**插件：把任务排队�
 dsh plugin --profile web add github:kevon2019/dsh-idle-scheduler
 ```
 
-> 如需锁定版本：`dsh plugin --profile web add github:kevon2019/dsh-idle-scheduler#v1.1.2`
+> 如需锁定版本：`dsh plugin --profile web add github:kevon2019/dsh-idle-scheduler#v1.2.0`
 > （GitHub 依赖用 `#` 指定 tag/分支，**不是** npm 的 `@版本`）
 > 安装后重启面板服务即可生效：`systemctl restart deepseek-harness.service`
 
@@ -54,9 +54,32 @@ crontab -l
 - 执行器用 `dsh --profile <PROFILE> <prompt>` 跑免交互 agent（默认 headless profile，环境变量
   DSH/DSH_HOME 与 kejilion.env 注入）。请确保对应 profile 已配置好模型与 API Key。
 
+## 兼容性
+
+| dsh 核心 | 状态 |
+|---|---|
+| `0.1.6-alpha.1` | ✅ 已实测（2026-09-18）：面板启动、设置分区、输入框「闲时/定时」按钮、队列 API、cron 执行器全链路；`useInput` 草稿读写正常 |
+| `0.1.5-rc.1` | ✅ 已实测（2026-09-10）：`conversation.input.left` 新契约（`useInput` / `inputActions`） |
+| `>= 0.1.2-alpha.1` | ✅ 声明支持（host 侧只用 `ctx.webServer.register`） |
+| `<= 0.1.1` | ⚠ 兼容保留（走旧的 `props.input.draft` 对象写法，未再回归测试） |
+
+## 定时时间怎么选（v1.2.0 起）
+
+点输入框工具栏的「定时」或设置页的「定时」，会展开时间选择器：
+
+- **日期**：原生日期选择（点日历图标选，或按 `年/月/日` 逐段输入）；
+- **时 / 分**：两个原生下拉（`00–23 时` / `00–59 分`）——纯下拉选择，不受浏览器/语言环境影响；
+- **快捷**：`＋5 分钟` / `＋30 分钟` / `＋1 小时` / `明天 09:00`；打开时默认已填「30 分钟后」，直接点「入队」即可；
+- 下面一行实时回显「将于 `YYYY-MM-DD HH:MM` 执行」；时间残缺 / 无效 / 已过期会直接写明原因。
+
+> 为什么不用原生的 `datetime-local`：在面板的窄输入框里用键盘录入时/分时，数字会落进「年」段、
+> `value` 保持为空（`validity.badInput=true`），继续输入会产出「年 = 93300」这类垃圾值，
+> 随后 `new Date(x).toISOString()` 抛 `RangeError` → 点「入队」毫无反应。
+> v1.2.0 用「下拉 + 校验」彻底绕开该原生控件的坑（详见 CHANGELOG）。
+
 ## 避坑 / 故障排查
 
-- **锁版本**：安装用 `#v1.1.2`（GitHub 依赖用 `#` 指定 tag，不是 npm 的 `@版本`）。
+- **锁版本**：安装用 `#v1.2.0`（GitHub 依赖用 `#` 指定 tag，不是 npm 的 `@版本`）。
 - **装后重启**：`systemctl restart deepseek-harness.service`。
 - **别在 profile 里手动 `pnpm add/up`**：可能破坏 `node_modules/@changfenhuang/dsh-genui` 软链（dsh 面板把它软链到 `@omdsh-dev/dsh-genui`），导致面板 UI 起不来；装/改插件一律走 `dsh plugin`。若动过 pnpm，请检查该软链是否仍存在。
 - **PROFILE 层补丁**：插件对面板的 cordis 补丁写在 PROFILE 的 `cordis.patch.yml`，勿改 node_modules 里的（重启会被还原）。
@@ -70,5 +93,5 @@ crontab -l
 ## 开发与源码
 
 - 结构：`lib/index.js`（host 半）+ `lib/client.js`（client 半）+ `cordis.patch.yml`（bundle 挂载）
-- 版本：`1.1.2`
+- 版本：`1.2.0`
 - 许可：MIT

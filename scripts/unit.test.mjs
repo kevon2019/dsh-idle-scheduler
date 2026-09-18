@@ -61,5 +61,33 @@ if (typeof hint === 'function') {
   check('每条提示都含 title/cause/fix 且无真实域名泄漏', all.every((h) => h.title && h.cause && h.fix && !/kevonchen|dsh\./.test(JSON.stringify(h))));
 }
 
+/* ---------- v1.2.0：定时时间纯函数（原生 datetime-local 换掉后的回归护栏）---------- */
+const T = mod.apply.__time;
+check('导出时间纯函数 __time', T && typeof T.parseLocalToIso === 'function' && typeof T.shiftLocal === 'function');
+if (T) {
+  check('composeLocal/splitLocal 往返一致',
+    T.composeLocal('2026-09-18', '14', '05') === '2026-09-18T14:05'
+    && JSON.stringify(T.splitLocal('2026-09-18T14:05')) === JSON.stringify({ date: '2026-09-18', hh: '14', mm: '05' }));
+  check('composeLocal 拒绝残缺输入', T.composeLocal('', '14', '05') === '' && T.composeLocal('2026-09-18', '4', '05') === '');
+
+  const NOW = new Date('2026-09-18T05:00:00Z').getTime();   // 固定「现在」，避免时区/时间漂移
+  const ok = T.parseLocalToIso(T.shiftLocal(30, null, NOW), NOW);
+  check('合法未来时间 → ok + ISO', ok.ok === true && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(ok.iso), JSON.stringify(ok));
+  check('空值 → 不可用（带原因）', T.parseLocalToIso('', NOW).ok === false && /选择/.test(T.parseLocalToIso('', NOW).reason));
+  check('残缺值 → 不可用', T.parseLocalToIso('2026-09-18T14', NOW).ok === false);
+  /* 旧版原生控件实际产出的垃圾值：必须被拦下（此前 new Date(x).toISOString() 抛 RangeError → 点击无反应） */
+  const junk = T.parseLocalToIso('93300-01-09T14:20', NOW);
+  check('原生控件垃圾值 93300-01-09T14:20 → 不可用且不抛异常', junk.ok === false && !!junk.reason, JSON.stringify(junk));
+  const past = T.parseLocalToIso('2020-01-01T00:00', NOW);
+  check('已过期时间 → 不可用（需晚于当前时间）', past.ok === false && /晚于/.test(past.reason), JSON.stringify(past));
+  check('＋5/＋30/＋60 分钟平移正确',
+    T.shiftLocal(5, '2026-09-18T23:58', NOW) === '2026-09-19T00:03'
+    && T.shiftLocal(30, '2026-09-18T10:00', NOW) === '2026-09-18T10:30'
+    && T.shiftLocal(60, '2026-09-18T23:30', NOW) === '2026-09-19T00:30');
+  check('明天 09:00 一定是未来的一天',
+    T.nextDayAt(9, 0, NOW) === '2026-09-19T09:00', T.nextDayAt(9, 0, NOW));
+  check('时/分候选表齐全（24 / 60）', T.HOURS.length === 24 && T.MINUTES.length === 60 && T.HOURS[23] === '23' && T.MINUTES[59] === '59');
+}
+
 console.log(failed === 0 ? '\n✓ ALL PASS' : `\n✗ ${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);
