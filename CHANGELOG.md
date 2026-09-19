@@ -1,5 +1,42 @@
 # Changelog
 
+## 1.4.0 (2026-09-19) — 队列/任务「暂停 · 终止」+ 调整执行时间（含真杀执行进程）
+
+- **队列开关（新增）**：设置页「队列与执行状态」顶部一栏显示 `▶ 队列运行中` / `⏸ 队列已暂停`（带暂停时间与原因），
+  三个按钮：
+  - `暂停队列` → 写 `~/.dsh/idle-scheduler-control.json`，**cron 执行器不再取新任务**（已经在跑的那条不受影响）；
+  - `恢复队列` → 待执行任务重新参与闲时/定时调度；
+  - `终止队列` → 一键「停下来」：暂停队列 **+ 杀掉所有执行中任务的执行进程**（二次确认，与「删除」同一套防误触）。
+- **单条任务暂停/恢复**：`暂停` 后执行器跳过它（行上出现 `⏸ 已暂停` 徽标），`恢复` 后照原样参与闲时/定时调度。
+- **单条任务终止（真的杀进程）**：执行器从 `spawnSync` 改为 `spawn`，把 `child.pid` / `pidStartedAt` 写回队列；
+  面板「终止」据此发 SIGTERM（3 秒后仍存活再 SIGKILL），任务落 `terminated`（保留记录，可「重试」）。
+  杀之前核对身份：`/proc/<pid>/cmdline` 必须含 `dsh`，且进程启动时间不得早于本任务 —— 核对不过只标记状态
+  并如实回显原因（实测用 `sleep` 冒充时正确拒杀，无关进程存活）。
+- **调整执行时间**：待执行任务可 `保存并改为定时`（写入新的 `runAt`）或 `改为闲时执行`（清空 `runAt`）；
+  过去时间被接受并标记 `past=true`（等价「下一次调度立即执行」）。
+- **执行状态自愈**：`GET` 时把「running 但进程已不存在（且已过 60 秒落地窗口）」的任务标成 failed 并写明原因，
+  执行器被杀/服务器重启后不会留下永远显示「执行中」的僵尸任务。
+- **执行器（cron 侧）**：
+  - 读队列开关（暂停就整轮跳过，日志写明原因；`run --force` 可强制跑一轮）；
+  - 跳过 `paused` / `terminateRequested` 的任务并打印一行汇总（不刷屏、也不静默）；
+  - 每执行一条前**从磁盘重读队列**，避免与面板写入打架；
+  - 落盘改**原子写**（临时文件 + `rename`），与面板同时读写也不会写出半截 JSON（面板侧同步改造）；
+  - 新增 CLI：`status` / `pause [原因]` / `resume` / `terminate <id>`。
+- **服务端 API（仅新增，向后兼容）**：
+  `POST {action:"pause-queue"|"resume-queue"|"terminate-queue"}`；
+  `POST {action:"pause"|"resume"|"terminate"|"set-time", id, ...}`；
+  `GET` 新增 `queue{paused,pausedAt,reason}`、`stats.terminated`、`stats.paused`、每条
+  `paused/pausedAt/startedAt/pid/terminateRequested/updatedAt/timeAdjustedAt`、`swept`。
+- **实测证据（2026-09-19，dsh 0.1.6-alpha.1 / 8765 面板 + 真实 Chromium 点击）**：
+  - 单测：`node scripts/unit.test.mjs` 46 项全绿（新增暂停/终止/调整时间权限矩阵、队列文案、`terminated` 状态、
+    `summarize` 的 `terminated/paused` 口径）；`node scripts/api.test.mjs` 35 项全绿（真 spawn 假 `dsh`
+    进程验证 terminate 杀进程 + `sleep` 反例拒杀 + 终止队列 + 僵尸自愈 + 原子写无残留）；
+    `node scripts/executor.test.mjs` 15 项全绿（队列暂停跳过、任务暂停跳过、正常执行落 done、
+    执行中 terminate 真杀子进程并落 terminated、执行中暂停队列不影响在跑任务、CLI pause/resume/status）。
+  - 真实浏览器（CDP 真鼠标点击）：27/27 通过、控制台 0 报错 —— 队列开关三按钮、任务行「暂停/调整时间」、
+    时间选择器展开、保存为定时、改为闲时、终止队列二次确认 全部走通且服务端状态一致。
+- 兼容性不变：dsh `0.1.6-alpha.1` 实测（面板设置分区渲染、队列 API、cron 执行器全链路）。
+
 ## 1.3.0 (2026-09-18) — 队列「归档 / 删除」按钮 + 执行状态展示
 
 - **设置页新增「队列与执行状态」卡片**（原「队列」卡片重做）：

@@ -131,5 +131,45 @@ if (QH) {
     && QH.taskTimeText({ mode: 'idle', createdAt: '2026-09-18T06:30:00Z', finishedAt: '2026-09-18T07:00:00Z' }) === '2026-09-18 07:00');
 }
 
+/* ---------- v1.4.0：队列开关 / 任务暂停·终止·调整执行时间 纯函数 ---------- */
+if (QH) {
+  const T = (id, status, extra) => Object.assign({ id, status, prompt: 'p' + id, mode: 'idle' }, extra || {});
+  const paused = T('p', 'queued', { paused: true });
+  const queued = T('q', 'queued');
+  const running = T('r', 'running', { pid: 4242 });
+  const terminated = T('t', 'terminated');
+  const archQueued = T('aq', 'queued', { archived: true });
+
+  check('STATUS_META 含「已终止」且可重试',
+    !!(QH.STATUS_META.terminated && QH.STATUS_META.terminated.label === '已终止' && QH.STATUS_META.terminated.color)
+    && QH.canRetry(terminated) === true && QH.canRetry(queued) === false, JSON.stringify(QH.STATUS_META.terminated));
+
+  check('summarize 统计 terminated 与 paused',
+    (() => { const s2 = QH.summarize([paused, queued, running, terminated]); return s2.terminated === 1 && s2.paused === 1 && s2.queued === 2 && s2.running === 1 && s2.active === 4; })());
+
+  check('暂停/恢复权限：只有未归档的待执行任务',
+    QH.canPauseTask(queued) && QH.canPauseTask(paused) === false && QH.canPauseTask(running) === false
+    && QH.canPauseTask(archQueued) === false
+    && QH.canResumeTask(paused) && QH.canResumeTask(queued) === false && QH.canResumeTask(archQueued) === false);
+
+  check('调整执行时间权限：只有未归档的待执行任务',
+    QH.canSetTime(queued) && QH.canSetTime(paused) && QH.canSetTime(running) === false && QH.canSetTime(archQueued) === false && QH.canSetTime(terminated) === false);
+
+  check('终止权限：执行中才有「终止」按钮',
+    QH.canTerminateTask(running) && QH.canTerminateTask(queued) === false && QH.canTerminateTask(archQueued) === false && QH.canTerminateTask(null) === false);
+
+  check('filterTasks 支持 terminated 视图', QH.filterTasks([paused, terminated], 'terminated').map((t) => t.id).join(',') === 't');
+
+  const st = QH.shortTime('2026-09-18T06:30:00.000Z');
+  check('shortTime 输出「YYYY-MM-DD HH:MM」', /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(st), st);
+  check('shortTime 容错空值/垃圾值', QH.shortTime(null) === '—' && QH.shortTime('nope') === '—');
+
+  const t1 = QH.queueSummaryText({ paused: false, pausedAt: null, reason: '' }, { paused: 2 });
+  check('队列运行中文案带「被单独暂停」计数', /闲时窗口/.test(t1) && /2 个待执行任务被单独暂停/.test(t1), t1);
+  const t2 = QH.queueSummaryText({ paused: true, pausedAt: '2026-09-18T06:30:00.000Z', reason: '维护' }, { paused: 0 });
+  check('队列暂停文案含时间与原因', /不会被调度/.test(t2) && /维护/.test(t2) && /2026-09-18/.test(t2), t2);
+  check('queueSummaryText 容错 null', typeof QH.queueSummaryText(null, null) === 'string' && QH.queueSummaryText(null, null).length > 0);
+}
+
 console.log(failed === 0 ? '\n✓ ALL PASS' : `\n✗ ${failed} FAILED`);
 process.exit(failed === 0 ? 0 : 1);
