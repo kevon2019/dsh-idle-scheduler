@@ -135,9 +135,10 @@ node idle-scheduler.js terminate <id>    # 终止某条任务（执行中会真�
 
 | dsh 核心 | 状态 |
 |---|---|
+| `0.2.2-alpha.2` | ✅ 已实测（2026-10-30）：面板启动 0 报错、设置分区渲染、输入框「闲时/定时」入口、队列 API（`/api/idle-scheduler/tasks`）、暂停/恢复/终止与筛选全部正常 |
 | `0.1.6-alpha.1` | ✅ 已实测（2026-09-18）：面板启动、设置分区、输入框「闲时/定时」按钮、队列 API、cron 执行器全链路；`useInput` 草稿读写正常 |
 | `0.1.5-rc.1` | ✅ 已实测（2026-09-10）：`conversation.input.left` 新契约（`useInput` / `inputActions`） |
-| `>= 0.1.2-alpha.1` | ✅ 声明支持（host 侧只用 `ctx.webServer.register`） |
+| `>= 0.1.2-alpha.1` | ✅ 声明支持（host 侧只用 `ctx.webServer.register`，client 侧只用 `slots`；两者在 0.2.x 未变，故无需按版本分支） |
 | `<= 0.1.1` | ⚠ 兼容保留（走旧的 `props.input.draft` 对象写法，未再回归测试） |
 
 ## 定时时间怎么选（v1.2.0 起）

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.5.0 (2026-10-30) — 在 dsh 0.2.2-alpha.2 上复核通过（含 0.2.x 全线），无需改代码
+
+### 结论
+dsh 0.2.1+ 移除了 `ctx.settings.installSection` 与客户端 `ctx.settingsScope` 两套「插件设置」API，
+**本插件不依赖它们**：宿主只用 `ctx.webServer.register`，客户端只用 `slots` + 自己的
+`/api/idle-scheduler/tasks`。因此 0.2.2-alpha.2 上开箱可用，0.1.x 行为不变。
+
+### 实测（本机 dsh 0.2.2-alpha.2）
+- 面板启动 0 失败、浏览器控制台 0 报错；
+- 设置 → 闲时/定时任务：任务输入框、模型选择、加入队列/定时、队列状态与暂停/恢复、筛选页签、归档操作全部正常；
+- `GET /api/idle-scheduler/tasks` 返回 `{ok:true,tasks,stats,queue,plugin}` 正常；
+- 输入框工具栏「闲时/定时」按钮仍在 `conversation.input.left` 槽位。
+
+### 文档
+- README 兼容性表补 `0.2.2-alpha.2` 实测行，并说明「为什么 0.2.x 不需要版本分支」。
+
 ## 1.4.0 (2026-09-19) — 队列/任务「暂停 · 终止」+ 调整执行时间（含真杀执行进程）
 
 - **队列开关（新增）**：设置页「队列与执行状态」顶部一栏显示 `▶ 队列运行中` / `⏸ 队列已暂停`（带暂停时间与原因），
